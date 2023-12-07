@@ -1,13 +1,13 @@
 #include "vision.hpp"
 
-string dst1 = "appsrc ! videoconvert ! video/x-raw, format=BGRx ! nvvidconv ! nvv4l2h264enc insert-sps-pps=true ! h264parse ! rtph264pay pt=96 ! udpsink host=203.234.58.169 port=8001 sync=false";
-VideoWriter writer1(dst1, 0, (double)30, Size(640, 360), true);
-
 bool ctrl_c_pressed = false;
 void ctrlc_handler(int) { ctrl_c_pressed = true; }
 
 int main(void)
 {
+    string dst1 = "appsrc ! videoconvert ! video/x-raw, format=BGRx ! nvvidconv ! nvv4l2h264enc insert-sps-pps=true ! h264parse ! rtph264pay pt=96 ! udpsink host=203.234.58.169 port=8001 sync=false";
+    VideoWriter writer1(dst1, 0, (double)30, Size(640, 360), true);
+    
     string src = "nvarguscamerasrc sensor-id=0 ! video/x-raw(memory:NVMM), width=(int)640, height=(int)360, format=(string)NV12 ! nvvidconv flip-method=0 ! video/x-raw, width=(int)640, height=(int)360, format=(string)BGRx ! videoconvert ! video/x-raw, format=(string)BGR ! appsink";
     VideoCapture source(src, CAP_GSTREAMER);
 
@@ -20,13 +20,12 @@ int main(void)
     signal(SIGINT, ctrlc_handler);
     if (!mx.open()) { cout << "dynamixel open error" << endl; return -1; }
 
-    static int prev_error = 0;
-    static int error = 0;
+    int error = 0;
 
     bool allow_to_start = false;
 
-    int def_speed = 200;
-    double k = 0.32;
+    int def_speed = 150;
+    double k = 0.27;
 
     while (true)
     {
@@ -44,7 +43,7 @@ int main(void)
 
         Mat cut_gray = preprocess(frame);
 
-        error = -1 * calc_err(cut_gray, prev_error);
+        error = -1 * calc_err(cut_gray);
 
         if (allow_to_start){
             vel1 = def_speed + (error*k);
@@ -58,7 +57,6 @@ int main(void)
         gettimeofday(&end1, NULL);
         time1 = end1.tv_sec - start.tv_sec + (end1.tv_usec - start.tv_usec) / 1000000.0;
         cout << "vel1:" << vel1 << ',' << "vel2:" << vel2 << ",time:" << time1 << ", error: " << error << endl;
-        prev_error = error;
     }
     mx.close(); // 장치닫기
     return 0;
